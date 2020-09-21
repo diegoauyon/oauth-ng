@@ -1,11 +1,11 @@
 'use strict';
 
-var storageService = angular.module('oauth.storage', ['ngStorage']);
+var storageService = angular.module('oauth.storage', []);
 
-storageService.factory('Storage', ['$rootScope', '$sessionStorage', '$localStorage', function($rootScope, $sessionStorage, $localStorage){
+storageService.factory('Storage', [function(){
 
   var service = {
-    storage: $sessionStorage // By default
+    storage: window.sessionStorage // By default
   };
 
   /**
@@ -14,7 +14,7 @@ storageService.factory('Storage', ['$rootScope', '$sessionStorage', '$localStora
    */
   service.delete = function (name) {
     var stored = this.get(name);
-    delete this.storage[name];
+    this.storage.removeItem(name);
     return stored;
   };
 
@@ -22,7 +22,7 @@ storageService.factory('Storage', ['$rootScope', '$sessionStorage', '$localStora
    * Returns the item from storage
    */
   service.get = function (name) {
-    return this.storage[name];
+    return this.storage.getItem(name);
   };
 
   /**
@@ -30,7 +30,7 @@ storageService.factory('Storage', ['$rootScope', '$sessionStorage', '$localStora
    * Returns the item's value
    */
   service.set = function (name, value) {
-    this.storage[name] = value;
+    this.storage.setItem(name, value);
     return this.get(name);
   };
 
@@ -39,9 +39,9 @@ storageService.factory('Storage', ['$rootScope', '$sessionStorage', '$localStora
    */
   service.use = function (storage) {
     if (storage === 'sessionStorage') {
-      this.storage = $sessionStorage;
+      this.storage = window.sessionStorage;
     } else if (storage === 'localStorage') {
-      this.storage = $localStorage;
+      this.storage = window.localStorage;
     }
   };
 
