@@ -903,7 +903,9 @@ storageService.factory('Storage', [function(){
    * Returns the item from storage
    */
   service.get = function (name) {
-    return this.storage.getItem(name);
+    var stringObject = this.storage.getItem(name);
+    return (stringObject !== null) ?
+      JSON.parse(stringObject) : null;
   };
 
   /**
@@ -911,7 +913,7 @@ storageService.factory('Storage', [function(){
    * Returns the item's value
    */
   service.set = function (name, value) {
-    this.storage.setItem(name, value);
+    this.storage.setItem(name, JSON.stringify(value));
     return this.get(name);
   };
 
