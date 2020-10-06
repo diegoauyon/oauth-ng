@@ -3,215 +3,224 @@
 var directives = angular.module('oauth.directive', []);
 
 directives.directive('oauth', [
-  'IdToken',
-  'AccessToken',
-  'Endpoint',
-  'Profile',
-  'Storage',
-  'OidcConfig',
-  '$location',
-  '$rootScope',
-  '$compile',
-  '$http',
-  '$templateCache',
-  '$timeout',
-  function(IdToken, AccessToken, Endpoint, Profile, Storage, OidcConfig, $location, $rootScope, $compile, $http, $templateCache, $timeout) {
+    'IdToken',
+    'AccessToken',
+    'Endpoint',
+    'Profile',
+    'Storage',
+    'OidcConfig',
+    '$location',
+    '$rootScope',
+    '$compile',
+    '$http',
+    '$templateCache',
+    '$timeout',
+    function (IdToken, AccessToken, Endpoint, Profile, Storage, OidcConfig, $location, $rootScope, $compile, $http, $templateCache, $timeout) {
 
-    var definition = {
-      restrict: 'AE',
-      replace: true,
-      scope: {
-        site: '@',              // (required) set the oauth server host (e.g. http://oauth.example.com)
-        clientId: '@',          // (required) client id
-        redirectUri: '@',       // (required) client redirect uri
-        responseType: '@',      // (optional) response type, defaults to token (use 'token' for implicit flow, 'code' for authorization code flow and 'password' for resource owner password
-        scope: '@',             // (optional) scope
-        profileUri: '@',        // (optional) user profile uri (e.g http://example.com/me)
-        template: '@',          // (optional) template to render (e.g views/templates/default.html)
-        text: '@',              // (optional) login text
-        authorizePath: '@',     // (optional) authorization url
-        tokenPath: '@',         // (optional) token url
-        state: '@',             // (optional) An arbitrary unique string created by your app to guard against Cross-site Request Forgery
-        storage: '@',           // (optional) Store token in 'sessionStorage' or 'localStorage', defaults to 'sessionStorage'
-        nonce: '@',             // (optional) Send nonce on auth request
-                                // OpenID Connect extras, more details in id-token.js:
-        issuer: '@',            // (optional for OpenID Connect) issuer of the id_token, should match the 'iss' claim in id_token payload
-        subject: '@',           // (optional for OpenID Connect) subject of the id_token, should match the 'sub' claim in id_token payload
-        pubKey: '@',            // (optional for OpenID Connect) the public key(RSA public key or X509 certificate in PEM format) to verify the signature
-        wellKnown: '@',         // (optional for OpenID Connect) whether to load public key according to .well-known/openid-configuration endpoint
-        logoutPath: '@',        // (optional) A url to go to at logout
-        sessionPath: '@',       // (optional) A url to use to check the validity of the current token.
-        disableCheckSession:'@' // (optional) can current token be checked ?
-      }
-    };
+        var definition = {
+            restrict: 'AE',
+            replace: true,
+            scope: {
+                site: '@',              // (required) set the oauth server host (e.g. http://oauth.example.com)
+                clientId: '@',          // (required) client id
+                secret: '@',            // (optional) client secret
+                redirectUri: '@',       // (required) client redirect uri
+                responseType: '@',      // (optional) response type, defaults to token (use 'token' for implicit flow, 'code' for authorization code flow and 'password' for resource owner password
+                scope: '@',             // (optional) scope
+                profileUri: '@',        // (optional) user profile uri (e.g http://example.com/me)
+                template: '@',          // (optional) template to render (e.g views/templates/default.html)
+                text: '@',              // (optional) login text
+                authorizePath: '@',     // (optional) authorization url
+                tokenPath: '@',         // (optional) token url
+                tokenExtraHeaders: '@', // (optional) Headers for token url
+                state: '@',             // (optional) An arbitrary unique string created by your app to guard against Cross-site Request Forgery
+                storage: '@',           // (optional) Store token in 'sessionStorage' or 'localStorage', defaults to 'sessionStorage'
+                nonce: '@',             // (optional) Send nonce on auth request
+                                        // OpenID Connect extras, more details in id-token.js:
+                issuer: '@',            // (optional for OpenID Connect) issuer of the id_token, should match the 'iss' claim in id_token payload
+                subject: '@',           // (optional for OpenID Connect) subject of the id_token, should match the 'sub' claim in id_token payload
+                pubKey: '@',            // (optional for OpenID Connect) the public key(RSA public key or X509 certificate in PEM format) to verify the signature
+                wellKnown: '@',         // (optional for OpenID Connect) whether to load public key according to .well-known/openid-configuration endpoint
+                logoutPath: '@',        // (optional) A url to go to at logout
+                sessionPath: '@',       // (optional) A url to use to check the validity of the current token.
+                disableCheckSession: '@' // (optional) can current token be checked ?
+            }
+        };
 
-    definition.link = function postLink(scope, element) {
-      scope.show = 'none';
+        definition.link = function postLink(scope, element) {
+            scope.show = 'none';
 
-      scope.$watch('clientId', function() {
-        init();
-      });
-
-      var init = function() {
-        initAttributes();          // sets defaults
-        Storage.use(scope.storage);// set storage
-        compile();                 // compiles the desired layout
-        Endpoint.set(scope);       // sets the oauth authorization url
-        OidcConfig.load(scope)     // loads OIDC configuration from .well-known/openid-configuration if necessary
-          .then(function() {
-            IdToken.set(scope);
-            AccessToken.set(scope).then(function () { // sets the access token object (if existing, from fragment or session)
-            })
-            ["finally"](function () {
-              initProfile(scope);                     // gets the profile resource (if existing the access token)
-              initView();                             // sets the view (logged in or out)
-              checkValidity();                        // ensure the validity of the current token
+            scope.$watch('clientId', function () {
+                init();
             });
-          });
-      };
 
-      var initAttributes = function() {
-        scope.authorizePath       = scope.authorizePath || '/oauth/authorize';
-        scope.tokenPath           = scope.tokenPath     || '/oauth/token';
-        scope.template            = scope.template      || 'views/templates/default.html';
-        scope.responseType        = scope.responseType  || 'token';
-        scope.text                = scope.text          || 'Sign In';
-        scope.state               = scope.state         || undefined;
-        scope.scope               = scope.scope         || undefined;
-        scope.storage             = scope.storage       || 'sessionStorage';
-        scope.disableCheckSession = scope.disableCheckSession || false;
-        scope.typedLogin          = "";
-        scope.typedPassword       = "";
-        scope.typedKeepConnection = false;
-      };
+            var init = function () {
+                initAttributes();          // sets defaults
+                Storage.use(scope.storage);// set storage
+                compile();                 // compiles the desired layout
+                Endpoint.set(scope);       // sets the oauth authorization url
+                OidcConfig.load(scope)     // loads OIDC configuration from .well-known/openid-configuration if necessary
+                    .then(function () {
+                        IdToken.set(scope);
+                        AccessToken.set(scope).then(function () { // sets the access token object (if existing, from fragment or session)
+                        })
+                            ["finally"](function () {
+                            initProfile(scope);                     // gets the profile resource (if existing the access token)
+                            initView();                             // sets the view (logged in or out)
+                            checkValidity();                        // ensure the validity of the current token
+                        });
+                    });
+            };
 
-      var compile = function() {
-        $http.get(scope.template, { cache: $templateCache }).success(function(html) {
-          element.html(html);
-          $compile(element.contents())(scope);
-        });
-      };
+            var initAttributes = function () {
+                scope.authorizePath = scope.authorizePath || '/oauth/authorize';
+                scope.tokenPath = scope.tokenPath || '/oauth/token';
+                scope.template = scope.template || 'views/templates/default.html';
+                scope.responseType = scope.responseType || 'token';
+                scope.text = scope.text || 'Sign In';
+                scope.state = scope.state || undefined;
+                scope.scope = scope.scope || undefined;
+                scope.storage = scope.storage || 'sessionStorage';
+                scope.disableCheckSession = scope.disableCheckSession || false;
+                scope.secret = scope.secret || undefined;
+                scope.tokenExtraHeaders = scope.tokenExtraHeaders || undefined;
+                scope.typedLogin = '';
+                scope.typedPassword = '';
+                scope.typedKeepConnection = false;
+            };
 
-      var initProfile = function(scope) {
-        var token = AccessToken.get();
+            var compile = function () {
+                $http.get(scope.template, {cache: $templateCache}).success(function (html) {
+                    element.html(html);
+                    $compile(element.contents())(scope);
+                });
+            };
 
-        if (token && token.access_token && scope.profileUri) {
-          Profile.find(scope.profileUri).success(function(response) {
-            scope.profile = response;
-          });
-        }
-      };
+            var initProfile = function (scope) {
+                var token = AccessToken.get();
 
-      var initView = function () {
-        var token = AccessToken.get();
+                if (token && token.access_token && scope.profileUri) {
+                    Profile.find(scope.profileUri).success(function (response) {
+                        scope.profile = response;
+                    });
+                }
+            };
 
-        if (!token && scope.responseType !== "password") {
-          return expired();
-        }  // without access token it's logged out, so we attempt to log in
-        if (AccessToken.expired()) {
-          return expired();
-        }  // with a token, but it's expired
-        if (token.access_token) {
-          return authorized();
-        }  // if there is the access token we are done
-        if (token.error) {
-          return denied();
-        }  // if the request has been denied we fire the denied event
-      };
+            var initView = function () {
+                var token = AccessToken.get();
 
-      scope.login = function () {
-        Endpoint.redirect();
-      };
+                if (!token && scope.responseType !== "password") {
+                    return expired();
+                }  // without access token it's logged out, so we attempt to log in
+                if (AccessToken.expired()) {
+                    return expired();
+                }  // with a token, but it's expired
+                if (token.access_token) {
+                    return authorized();
+                }  // if there is the access token we are done
+                if (token.error) {
+                    return denied();
+                }  // if the request has been denied we fire the denied event
+            };
 
-      scope.logout = function () {
-        scope.typedLogin          = "";
-        scope.typedPassword       = "";
-        scope.typedKeepConnection = false;
-        Endpoint.logout();
-        $rootScope.$broadcast('oauth:loggedOut');
-        scope.show = 'logged-out';
-        AccessToken.destroy();
-      };
-      
-      scope.checkPassword = function () {
-        $http({
-          method: "POST",
-          url: scope.site + scope.tokenPath,
-          headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-          transformRequest: function(obj) {
-            var str = [];
-            for(var p in obj)
-            str.push(encodeURIComponent(p) + "=" + encodeURIComponent(obj[p]));
-            return str.join("&");
-          },
-          data: {grant_type: "password", username: scope.typedLogin, password: scope.typedPassword, scope: scope.scope}
-        }).then(function (result) {
-          if (scope.typedKeepConnection) {
-            AccessToken.setTokenFromPassword(scope, result.data, scope.typedLogin, scope.typedPassword, scope.scope);
-          } else {
-            AccessToken.setTokenFromPassword(scope, result.data);
-            scope.typedLogin          = "";
-            scope.typedPassword       = "";
-            scope.typedKeepConnection = false;
-          }
-          scope.show = "logged-in";
-        }, function () {
-          $rootScope.$broadcast('oauth:denied');
-        });
-      };
+            scope.login = function () {
+                Endpoint.redirect();
+            };
 
-      scope.$on('oauth:expired', expired);
+            scope.logout = function () {
+                scope.typedLogin = "";
+                scope.typedPassword = "";
+                scope.typedKeepConnection = false;
+                Endpoint.logout();
+                $rootScope.$broadcast('oauth:loggedOut');
+                scope.show = 'logged-out';
+                AccessToken.destroy();
+            };
 
-      // user is authorized
-      var authorized = function() {
-        $rootScope.$broadcast('oauth:authorized', AccessToken.get());
-        scope.show = 'logged-in';
-      };
+            scope.checkPassword = function () {
+                $http({
+                    method: "POST",
+                    url: scope.site + scope.tokenPath,
+                    headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+                    transformRequest: function (obj) {
+                        var str = [];
+                        for (var p in obj)
+                            str.push(encodeURIComponent(p) + "=" + encodeURIComponent(obj[p]));
+                        return str.join("&");
+                    },
+                    data: {
+                        grant_type: "password",
+                        username: scope.typedLogin,
+                        password: scope.typedPassword,
+                        scope: scope.scope
+                    }
+                }).then(function (result) {
+                    if (scope.typedKeepConnection) {
+                        AccessToken.setTokenFromPassword(scope, result.data, scope.typedLogin, scope.typedPassword, scope.scope);
+                    } else {
+                        AccessToken.setTokenFromPassword(scope, result.data);
+                        scope.typedLogin = "";
+                        scope.typedPassword = "";
+                        scope.typedKeepConnection = false;
+                    }
+                    scope.show = "logged-in";
+                }, function () {
+                    $rootScope.$broadcast('oauth:denied');
+                });
+            };
 
-      var expired = function() {
-        scope.show = 'logged-out';
-        scope.logout();
-      };
-      
-      scope.runExpired = function() {
-        expired();
-      };
+            scope.$on('oauth:expired', expired);
 
-      // set the oauth directive to the denied status
-      var denied = function() {
-        scope.show = 'denied';
-        $rootScope.$broadcast('oauth:denied');
-      };
+            // user is authorized
+            var authorized = function () {
+                $rootScope.$broadcast('oauth:authorized', AccessToken.get());
+                scope.show = 'logged-in';
+            };
 
-      var checkValidity = function() {
-        Endpoint.checkValidity().then(function() {
-          $rootScope.$broadcast('oauth:valid');
-        }).catch(function(message){
-          $rootScope.$broadcast('oauth:invalid', message);
-        });
-      };
+            var expired = function () {
+                scope.show = 'logged-out';
+                scope.logout();
+            };
 
-      var refreshDirective = function () {
-        scope.$apply();
-      };
+            scope.runExpired = function () {
+                expired();
+            };
 
-      // Updates the template at runtime
-      scope.$on('oauth:template:update', function(event, template) {
-        scope.template = template;
-        compile(scope);
-      });
+            // set the oauth directive to the denied status
+            var denied = function () {
+                scope.show = 'denied';
+                $rootScope.$broadcast('oauth:denied');
+            };
 
-      // Hack to update the directive content on logout
-      scope.$on('$routeChangeSuccess', function () {
-        $timeout(refreshDirective);
-      });
+            var checkValidity = function () {
+                Endpoint.checkValidity().then(function () {
+                    $rootScope.$broadcast('oauth:valid');
+                }).catch(function (message) {
+                    $rootScope.$broadcast('oauth:invalid', message);
+                });
+            };
 
-      scope.$on('$stateChangeSuccess', function () {
-        $timeout(refreshDirective);
-      });
-      
-    };
+            var refreshDirective = function () {
+                scope.$apply();
+            };
 
-    return definition;
-  }
+            // Updates the template at runtime
+            scope.$on('oauth:template:update', function (event, template) {
+                scope.template = template;
+                compile(scope);
+            });
+
+            // Hack to update the directive content on logout
+            scope.$on('$routeChangeSuccess', function () {
+                $timeout(refreshDirective);
+            });
+
+            scope.$on('$stateChangeSuccess', function () {
+                $timeout(refreshDirective);
+            });
+
+        };
+
+        return definition;
+    }
 ]);

@@ -1,25 +1,26 @@
 <span class="oauth">
-  <a href="#" class="logged-out" data-ng-show="show==='logged-out'"                                data-ng-click="login()">Login Button</a>
-  <a href="#" class="logged-in"  data-ng-show="responseType !== 'password' && show==='logged-in'"  data-ng-click="logout()">Logout {{profile.email}}</a>
-  <a href="#" class="denied"     data-ng-show="responseType !== 'password' && show==='denied'"     data-ng-click="login()">Access denied.</a>
+  <a class="logged-out" data-ng-click="login()" data-ng-show="show==='logged-out'" href="#">Login Button</a>
+  <a class="logged-in" data-ng-click="logout()" data-ng-show="responseType !== 'password' && show==='logged-in'"
+     href="#">Logout {{profile.email}}</a>
+  <a class="denied" data-ng-click="login()" data-ng-show="responseType !== 'password' && show==='denied'" href="#">Access denied.</a>
 </span>
 
 <!-- Login/password form for response_type 'password' -->
 
 <div data-ng-show="responseType === 'password' && show !== 'logged-in'">
-  <form>
-    <div>
-      <label>Login</label>
-      <input type="text" data-ng-model="typedLogin" placeholder="login" >
-    </div>
-    <div>
-      <label>Password</label>
-      <input type="password" data-ng-model="typedPassword" placeholder="password" >
-    </div>
-    <div>
-      <label>Keep connection</label>
-      <input type="checkbox" data-ng-model="typedKeepConnection" >
-    </div>
-    <input type="submit" value="Submit" data-ng-click="checkPassword()">
-  </form>
+    <form>
+        <div>
+            <label>Login</label>
+            <input data-ng-model="typedLogin" placeholder="login" type="text">
+        </div>
+        <div>
+            <label>Password</label>
+            <input data-ng-model="typedPassword" placeholder="password" type="password">
+        </div>
+        <div>
+            <label>Keep connection</label>
+            <input data-ng-model="typedKeepConnection" type="checkbox">
+        </div>
+        <input data-ng-click="checkPassword()" type="submit" value="Submit">
+    </form>
 </div>

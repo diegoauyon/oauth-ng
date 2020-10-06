@@ -2,7 +2,7 @@
 
 var accessTokenService = angular.module('oauth.accessToken', []);
 
-accessTokenService.factory('AccessToken', ['Storage', '$rootScope', '$http', '$q', '$location', '$interval', '$timeout', 'IdToken', function(Storage, $rootScope, $http, $q, $location, $interval, $timeout, IdToken) {
+accessTokenService.factory('AccessToken', ['Storage', '$rootScope', '$http', '$q', '$location', '$interval', '$timeout', 'IdToken', function (Storage, $rootScope, $http, $q, $location, $interval, $timeout, IdToken) {
 
     var service = {
             token: null,
@@ -24,7 +24,7 @@ accessTokenService.factory('AccessToken', ['Storage', '$rootScope', '$http', '$q
     /**
      * Returns the access token.
      */
-    service.get = function() {
+    service.get = function () {
         return this.token;
     };
 
@@ -34,7 +34,7 @@ accessTokenService.factory('AccessToken', ['Storage', '$rootScope', '$http', '$q
      * - takes the token from the fragment URI
      * - takes the token from the sessionStorage
      */
-    service.set = function(scope) {
+    service.set = function (scope) {
         refreshTokenUri = scope.site + scope.tokenPath;
         this.runExpired = scope.runExpired;
 
@@ -61,7 +61,7 @@ accessTokenService.factory('AccessToken', ['Storage', '$rootScope', '$http', '$q
         }
     };
 
-    service.setTokenFromPassword = function(scope, token, typedLogin, typedPassword, oauthScope) {
+    service.setTokenFromPassword = function (scope, token, typedLogin, typedPassword, oauthScope) {
         this.runExpired = scope.runExpired;
         if (typedLogin && typedPassword && oauthScope) {
             service.typedLogin = typedLogin;
@@ -76,7 +76,7 @@ accessTokenService.factory('AccessToken', ['Storage', '$rootScope', '$http', '$q
      * Delete the access token and remove the session.
      * @returns {null}
      */
-    service.destroy = function() {
+    service.destroy = function () {
         cancelExpiresAtEvent();
         Storage.delete('token');
         this.token = null;
@@ -86,30 +86,49 @@ accessTokenService.factory('AccessToken', ['Storage', '$rootScope', '$http', '$q
     /**
      * Tells if the access token is expired.
      */
-    service.expired = function() {
+    service.expired = function () {
         return (this.token && this.token.expires_at && new Date(this.token.expires_at) < new Date());
     };
 
-    service.setTokenFromCode = function(search, scope) {
+    service.setTokenFromCode = function (search, scope) {
+        
+        var data = {
+            grant_type: "authorization_code",
+            code: search.code,
+            redirect_uri: scope.redirectUri,
+            client_id: scope.clientId
+        };
+
+        var tokenUrl = (scope.tokenPath.indexOf('http')!== -1)?
+            scope.tokenPath : scope.site + scope.tokenPath;
+
+        var headers = {};
+
+        if(scope.tokenExtraHeaders){
+            try{
+                var extraHeaders = JSON.parse(scope.tokenExtraHeaders);
+                headers = extraHeaders;
+            } catch (e) {
+                console.log('Headers are not a json');
+            }
+        }
+
+        headers['Content-Type'] = 'application/x-www-form-urlencoded';
+        headers['Authorization']= 'Basic YzNjYWJhMWEtMmRjZC00OGM1LThmNDItZjQwMDg1NmE5YmZhOmIxODc1NjFiLTZkMDQtNDE3Mi05NWY2LTExYTMyMWZlN2U3ZWVjNTU2MWQ5LTY2ZDQtNGIwMi05ODEwLWY2NTg2YjhkYmMyZg==';
+        console.warn('headers', headers);
+
         return $http({
             method: "POST",
-            url: scope.site + scope.tokenPath,
-            headers: {
-                'Content-Type': 'application/x-www-form-urlencoded'
-            },
-            transformRequest: function(obj) {
+            url: tokenUrl   ,
+            headers: headers,
+            transformRequest: function (obj) {
                 var str = [];
                 for (var p in obj)
                     str.push(encodeURIComponent(p) + "=" + encodeURIComponent(obj[p]));
                 return str.join("&");
             },
-            data: {
-                grant_type: "authorization_code",
-                code: search.code,
-                redirect_uri: scope.redirectUri,
-                client_id: scope.clientId
-            }
-        }).then(function(result) {
+            data: data
+        }).then(function (result) {
             setToken(result.data);
             $rootScope.$broadcast('oauth:login', service.token);
             $location.url($location.path());
@@ -120,7 +139,7 @@ accessTokenService.factory('AccessToken', ['Storage', '$rootScope', '$http', '$q
      * Get the access token from a string and save it
      * @param hash
      */
-    service.setTokenFromString = function(hash) {
+    service.setTokenFromString = function (hash) {
         var params = getTokenFromString(hash);
 
         if (params) {
@@ -136,12 +155,12 @@ accessTokenService.factory('AccessToken', ['Storage', '$rootScope', '$http', '$q
     /**
      * updates the expiration of the token
      */
-    service.updateExpiry = function(newExpiresIn) {
+    service.updateExpiry = function (newExpiresIn) {
         this.token.expires_in = newExpiresIn;
         setExpiresAt();
     };
 
-    service.forceRefresh = function(connect) {
+    service.forceRefresh = function (connect) {
         return refreshToken(connect);
     };
 
@@ -152,7 +171,7 @@ accessTokenService.factory('AccessToken', ['Storage', '$rootScope', '$http', '$q
     /**
      * Set the access token from the sessionStorage.
      */
-    var setTokenFromSession = function() {
+    var setTokenFromSession = function () {
         var params = Storage.get('token');
         if (params) {
             setToken(params);
@@ -171,7 +190,7 @@ accessTokenService.factory('AccessToken', ['Storage', '$rootScope', '$http', '$q
         }
     };
 
-    var refreshToken = function(connect) {
+    var refreshToken = function (connect) {
         if (service.token && service.token.refresh_token) {
             return $http({
                 method: "POST",
@@ -179,7 +198,7 @@ accessTokenService.factory('AccessToken', ['Storage', '$rootScope', '$http', '$q
                 headers: {
                     'Content-Type': 'application/x-www-form-urlencoded'
                 },
-                transformRequest: function(obj) {
+                transformRequest: function (obj) {
                     var str = [];
                     for (var p in obj)
                         str.push(encodeURIComponent(p) + "=" + encodeURIComponent(obj[p]));
@@ -189,7 +208,7 @@ accessTokenService.factory('AccessToken', ['Storage', '$rootScope', '$http', '$q
                     grant_type: "refresh_token",
                     refresh_token: service.token.refresh_token
                 }
-            }).then(function(result) {
+            }).then(function (result) {
                 angular.extend(service.token, result.data);
                 setExpiresAt();
                 setTokenInSession();
@@ -199,7 +218,7 @@ accessTokenService.factory('AccessToken', ['Storage', '$rootScope', '$http', '$q
                     $rootScope.$broadcast('oauth:refresh', service.token);
                 }
                 return result.data;
-            }, function(error) {
+            }, function (error) {
                 if (!!service.typedLogin && !!service.typedPassword) {
                     return reconnect();
                 } else {
@@ -218,14 +237,14 @@ accessTokenService.factory('AccessToken', ['Storage', '$rootScope', '$http', '$q
         }
     };
 
-    var reconnect = function() {
+    var reconnect = function () {
         return $http({
             method: "POST",
             url: refreshTokenUri,
             headers: {
                 'Content-Type': 'application/x-www-form-urlencoded'
             },
-            transformRequest: function(obj) {
+            transformRequest: function (obj) {
                 var str = [];
                 for (var p in obj)
                     str.push(encodeURIComponent(p) + "=" + encodeURIComponent(obj[p]));
@@ -237,11 +256,11 @@ accessTokenService.factory('AccessToken', ['Storage', '$rootScope', '$http', '$q
                 password: service.typedPassword,
                 scope: service.scope
             }
-        }).then(function(result) {
+        }).then(function (result) {
             angular.extend(service.token, result.data);
             setTokenInSession();
             $rootScope.$broadcast('oauth:refresh', service.token);
-        }, function(error) {
+        }, function (error) {
             if (!!service.typedLogin && !!service.typedPassword) {
                 return reconnect();
             } else {
@@ -261,7 +280,7 @@ accessTokenService.factory('AccessToken', ['Storage', '$rootScope', '$http', '$q
      * @param params
      * @returns {*|{}}
      */
-    var setToken = function(params) {
+    var setToken = function (params) {
         service.token = service.token || {}; // init the token
         angular.extend(service.token, params); // set the access token params
         setTokenInSession(); // save the token into the session
@@ -276,7 +295,7 @@ accessTokenService.factory('AccessToken', ['Storage', '$rootScope', '$http', '$q
      * @param hash
      * @returns {{}}
      */
-    var getTokenFromString = function(hash) {
+    var getTokenFromString = function (hash) {
         var params = {},
             regex = /([^&=]+)=([^&]*)/g,
             m;
@@ -300,18 +319,18 @@ accessTokenService.factory('AccessToken', ['Storage', '$rootScope', '$http', '$q
     /**
      * Save the access token into the session
      */
-    var setTokenInSession = function() {
+    var setTokenInSession = function () {
         Storage.set('token', service.token);
     };
 
     /**
      * Set the access token expiration date (useful for refresh logics)
      */
-    var setExpiresAt = function() {
+    var setExpiresAt = function () {
         if (!service.token) {
             return;
         }
-        if (typeof(service.token.expires_in) !== 'undefined' && service.token.expires_in !== null) {
+        if (typeof (service.token.expires_in) !== 'undefined' && service.token.expires_in !== null) {
             var expires_at = new Date();
             expires_at.setSeconds(expires_at.getSeconds() + parseInt(service.token.expires_in) - 60); // 60 seconds less to secure browser and response latency
             service.token.expires_at = expires_at;
@@ -324,20 +343,20 @@ accessTokenService.factory('AccessToken', ['Storage', '$rootScope', '$http', '$q
     /**
      * Set the interval at which the expired event is fired
      */
-    var setExpiresAtEvent = function() {
+    var setExpiresAtEvent = function () {
         // Don't bother if there's no expires token
-        if (typeof(service.token.expires_at) === 'undefined' || service.token.expires_at === null) {
+        if (typeof (service.token.expires_at) === 'undefined' || service.token.expires_at === null) {
             return;
         }
         cancelExpiresAtEvent();
         var time = (new Date(service.token.expires_at)) - (new Date());
         if (time && time > 0 && time <= 2147483647) {
             if (service.token.refresh_token) {
-                expiresAtEvent = $interval(function() {
+                expiresAtEvent = $interval(function () {
                     refreshToken();
                 }, time);
             } else {
-                expiresAtEvent = $timeout(function() {
+                expiresAtEvent = $timeout(function () {
                     $rootScope.$broadcast('oauth:expired');
                     service.runExpired();
                 }, time, 1);
@@ -345,7 +364,7 @@ accessTokenService.factory('AccessToken', ['Storage', '$rootScope', '$http', '$q
         }
     };
 
-    var cancelExpiresAtEvent = function() {
+    var cancelExpiresAtEvent = function () {
         if (expiresAtEvent) {
             if (service.token.refresh_token) {
                 $interval.cancel(expiresAtEvent);
@@ -359,9 +378,9 @@ accessTokenService.factory('AccessToken', ['Storage', '$rootScope', '$http', '$q
     /**
      * Remove the oAuth2 pieces from the hash fragment
      */
-    var removeFragment = function() {
+    var removeFragment = function () {
         var curHash = $location.hash();
-        angular.forEach(hashFragmentKeys, function(hashKey) {
+        angular.forEach(hashFragmentKeys, function (hashKey) {
             var re = new RegExp('&' + hashKey + '(=[^&]*)?|^' + hashKey + '(=[^&]*)?&?');
             curHash = curHash.replace(re, '');
         });

@@ -455,6 +455,8 @@ accessTokenService.factory('AccessToken', ['Storage', '$rootScope', '$http', '$q
     };
 
     service.setTokenFromCode = function(search, scope) {
+
+        var data =
         return $http({
             method: "POST",
             url: scope.site + scope.tokenPath,
@@ -471,7 +473,7 @@ accessTokenService.factory('AccessToken', ['Storage', '$rootScope', '$http', '$q
                 grant_type: "authorization_code",
                 code: search.code,
                 redirect_uri: scope.redirectUri,
-                client_id: scope.clientId
+                client_id: scope.clientId,
             }
         }).then(function(result) {
             setToken(result.data);
