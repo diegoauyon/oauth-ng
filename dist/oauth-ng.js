@@ -1,4 +1,4 @@
-/* oauth-ng - v0.5.4 - 2020-10-06 */
+/* oauth-ng - v0.5.6 - 2020-10-08 */
 
 'use strict';
 
@@ -809,17 +809,21 @@ endpointClient.factory('Endpoint', ['$rootScope', 'AccessToken', '$q', '$http', 
      * Redirects the app to the authorization URL
      */
 
-    service.redirect = function (overrides) {
+    service.redirect = function (overrides, redirectStrategy) {
         var targetLocation = this.get(overrides);
         $rootScope.$broadcast('oauth:logging-in');
-        window.location.replace(targetLocation);
+        if (redirectStrategy) {
+            redirectStrategy(targetLocation);
+        } else {
+            window.location.replace(targetLocation);
+        }
     };
 
     /*
      * Alias for 'redirect'
      */
-    service.login = function () {
-        service.redirect();
+    service.login = function (redirectStrategy) {
+        service.redirect({},redirectStrategy);
     };
 
     /*
