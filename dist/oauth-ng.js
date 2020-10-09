@@ -1,4 +1,4 @@
-/* oauth-ng - v0.5.6 - 2020-10-08 */
+/* oauth-ng - v0.5.7 - 2020-10-09 */
 
 'use strict';
 
@@ -457,7 +457,7 @@ accessTokenService.factory('AccessToken', ['Storage', '$rootScope', '$http', '$q
     };
 
     service.setTokenFromCode = function (search, scope) {
-        
+
         var data = {
             grant_type: "authorization_code",
             code: search.code,
@@ -465,27 +465,30 @@ accessTokenService.factory('AccessToken', ['Storage', '$rootScope', '$http', '$q
             client_id: scope.clientId
         };
 
-        var tokenUrl = (scope.tokenPath.indexOf('http')!== -1)?
+        var tokenUrl = (scope.tokenPath.indexOf('http') !== -1) ?
             scope.tokenPath : scope.site + scope.tokenPath;
 
         var headers = {};
 
-        if(scope.tokenExtraHeaders){
-            try{
+        if (scope.tokenExtraHeaders) {
+            try {
                 var extraHeaders = JSON.parse(scope.tokenExtraHeaders);
                 headers = extraHeaders;
             } catch (e) {
-                console.log('Headers are not a json');
+                console.log('Headers are not in json format');
             }
         }
 
+        if (scope.useHttpBasicAuth) {
+            var authHeader = btoa(scope.clientId + ':' + scope.secret);
+            headers['Authorization'] = 'Basic ' + authHeader;
+        }
+
         headers['Content-Type'] = 'application/x-www-form-urlencoded';
-        headers['Authorization']= 'Basic YzNjYWJhMWEtMmRjZC00OGM1LThmNDItZjQwMDg1NmE5YmZhOmIxODc1NjFiLTZkMDQtNDE3Mi05NWY2LTExYTMyMWZlN2U3ZWVjNTU2MWQ5LTY2ZDQtNGIwMi05ODEwLWY2NTg2YjhkYmMyZg==';
-        console.warn('headers', headers);
 
         return $http({
             method: "POST",
-            url: tokenUrl   ,
+            url: tokenUrl,
             headers: headers,
             transformRequest: function (obj) {
                 var str = [];
@@ -1055,6 +1058,7 @@ directives.directive('oauth', [
                 authorizePath: '@',     // (optional) authorization url
                 tokenPath: '@',         // (optional) token url
                 tokenExtraHeaders: '@', // (optional) Headers for token url
+                useHttpBasicAuth: '@',  // (optional) if Token request has to use basic Auth, default to true
                 state: '@',             // (optional) An arbitrary unique string created by your app to guard against Cross-site Request Forgery
                 storage: '@',           // (optional) Store token in 'sessionStorage' or 'localStorage', defaults to 'sessionStorage'
                 nonce: '@',             // (optional) Send nonce on auth request
@@ -1103,6 +1107,7 @@ directives.directive('oauth', [
                 scope.state = scope.state || undefined;
                 scope.scope = scope.scope || undefined;
                 scope.storage = scope.storage || 'sessionStorage';
+                scope.useHttpBasicAuth = scope.useHttpBasicAuth || true;
                 scope.disableCheckSession = scope.disableCheckSession || false;
                 scope.secret = scope.secret || undefined;
                 scope.tokenExtraHeaders = scope.tokenExtraHeaders || undefined;

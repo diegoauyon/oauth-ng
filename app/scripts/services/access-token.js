@@ -91,7 +91,7 @@ accessTokenService.factory('AccessToken', ['Storage', '$rootScope', '$http', '$q
     };
 
     service.setTokenFromCode = function (search, scope) {
-        
+
         var data = {
             grant_type: "authorization_code",
             code: search.code,
@@ -99,27 +99,30 @@ accessTokenService.factory('AccessToken', ['Storage', '$rootScope', '$http', '$q
             client_id: scope.clientId
         };
 
-        var tokenUrl = (scope.tokenPath.indexOf('http')!== -1)?
+        var tokenUrl = (scope.tokenPath.indexOf('http') !== -1) ?
             scope.tokenPath : scope.site + scope.tokenPath;
 
         var headers = {};
 
-        if(scope.tokenExtraHeaders){
-            try{
+        if (scope.tokenExtraHeaders) {
+            try {
                 var extraHeaders = JSON.parse(scope.tokenExtraHeaders);
                 headers = extraHeaders;
             } catch (e) {
-                console.log('Headers are not a json');
+                console.log('Headers are not in json format');
             }
         }
 
+        if (scope.useHttpBasicAuth) {
+            var authHeader = btoa(scope.clientId + ':' + scope.secret);
+            headers['Authorization'] = 'Basic ' + authHeader;
+        }
+
         headers['Content-Type'] = 'application/x-www-form-urlencoded';
-        headers['Authorization']= 'Basic YzNjYWJhMWEtMmRjZC00OGM1LThmNDItZjQwMDg1NmE5YmZhOmIxODc1NjFiLTZkMDQtNDE3Mi05NWY2LTExYTMyMWZlN2U3ZWVjNTU2MWQ5LTY2ZDQtNGIwMi05ODEwLWY2NTg2YjhkYmMyZg==';
-        console.warn('headers', headers);
 
         return $http({
             method: "POST",
-            url: tokenUrl   ,
+            url: tokenUrl,
             headers: headers,
             transformRequest: function (obj) {
                 var str = [];

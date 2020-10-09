@@ -33,6 +33,7 @@ directives.directive('oauth', [
                 authorizePath: '@',     // (optional) authorization url
                 tokenPath: '@',         // (optional) token url
                 tokenExtraHeaders: '@', // (optional) Headers for token url
+                useHttpBasicAuth: '@',  // (optional) if Token request has to use basic Auth, default to true
                 state: '@',             // (optional) An arbitrary unique string created by your app to guard against Cross-site Request Forgery
                 storage: '@',           // (optional) Store token in 'sessionStorage' or 'localStorage', defaults to 'sessionStorage'
                 nonce: '@',             // (optional) Send nonce on auth request
@@ -81,6 +82,7 @@ directives.directive('oauth', [
                 scope.state = scope.state || undefined;
                 scope.scope = scope.scope || undefined;
                 scope.storage = scope.storage || 'sessionStorage';
+                scope.useHttpBasicAuth = scope.useHttpBasicAuth || true;
                 scope.disableCheckSession = scope.disableCheckSession || false;
                 scope.secret = scope.secret || undefined;
                 scope.tokenExtraHeaders = scope.tokenExtraHeaders || undefined;
