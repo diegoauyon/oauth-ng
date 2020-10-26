@@ -1,6 +1,6 @@
 {
   "name": "oauth-ng",
-  "version": "0.5.8",
+  "version": "0.5.9",
   "main": [
     "dist/oauth-ng.js",
     "dist/views/templates/default"
