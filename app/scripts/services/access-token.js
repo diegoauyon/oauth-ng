@@ -35,7 +35,9 @@ accessTokenService.factory('AccessToken', ['Storage', '$rootScope', '$http', '$q
      * - takes the token from the sessionStorage
      */
     service.set = function (scope) {
-        refreshTokenUri = scope.site + scope.tokenPath;
+
+        refreshTokenUri = (scope.tokenPath.indexOf('http') !== -1) ?
+            scope.tokenPath : scope.site + scope.tokenPath;
         this.runExpired = scope.runExpired;
 
         if ($location.search().code) {
@@ -89,6 +91,7 @@ accessTokenService.factory('AccessToken', ['Storage', '$rootScope', '$http', '$q
     service.expired = function () {
         return (this.token && this.token.expires_at && new Date(this.token.expires_at) < new Date());
     };
+
 
     service.setTokenFromCode = function (search, scope) {
 
