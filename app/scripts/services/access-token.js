@@ -44,7 +44,7 @@ accessTokenService.factory('AccessToken', ['Storage', '$rootScope', '$http', '$q
             return this.setTokenFromCode($location.search(), scope);
         }
 
-        this.setTokenFromString($location.hash());
+        this.setTokenFromString($location.hash(), scope);
 
         //If hash is present in URL always use it, cuz its coming from oAuth2 provider redirect
 
@@ -57,7 +57,7 @@ accessTokenService.factory('AccessToken', ['Storage', '$rootScope', '$http', '$q
         }
 
         if (null === service.token) {
-            return setTokenFromSession();
+            return setTokenFromSession(scope);
         } else {
             return deferred.promise;
         }
@@ -70,7 +70,7 @@ accessTokenService.factory('AccessToken', ['Storage', '$rootScope', '$http', '$q
             service.typedPassword = typedPassword;
             service.scope = oauthScope;
         }
-        setToken(token);
+        setToken(token, scope);
         $rootScope.$broadcast('oauth:login', token);
     }
 
@@ -135,7 +135,7 @@ accessTokenService.factory('AccessToken', ['Storage', '$rootScope', '$http', '$q
             },
             data: data
         }).then(function (result) {
-            setToken(result.data);
+            setToken(result.data, scope);
             $rootScope.$broadcast('oauth:login', service.token);
             $location.url($location.path());
         });
@@ -145,15 +145,15 @@ accessTokenService.factory('AccessToken', ['Storage', '$rootScope', '$http', '$q
      * Get the access token from a string and save it
      * @param hash
      */
-    service.setTokenFromString = function (hash) {
+    service.setTokenFromString = function (hash, scope) {
         var params = getTokenFromString(hash);
 
         if (params) {
             removeFragment();
-            setToken(params);
+            setToken(params, scope);
             // We have to save it again to make sure expires_at is set
             //  and the expiry event is set up properly
-            setToken(this.token);
+            setToken(this.token, scope);
             $rootScope.$broadcast('oauth:login', service.token);
         }
     };
@@ -166,8 +166,8 @@ accessTokenService.factory('AccessToken', ['Storage', '$rootScope', '$http', '$q
         setExpiresAt();
     };
 
-    service.forceRefresh = function (connect) {
-        return refreshToken(connect);
+    service.forceRefresh = function (connect, scope) {
+        return refreshToken(connect, scope);
     };
 
     /* * * * * * * * * *
@@ -177,17 +177,17 @@ accessTokenService.factory('AccessToken', ['Storage', '$rootScope', '$http', '$q
     /**
      * Set the access token from the sessionStorage.
      */
-    var setTokenFromSession = function () {
+    var setTokenFromSession = function (scope) {
         var params = Storage.get('token');
         if (params) {
-            setToken(params);
+            setToken(params, scope);
             if (!params.refresh_token) {
                 var deferred = $q.defer();
                 deferred.resolve(params);
                 $rootScope.$broadcast('oauth:login', params);
                 return deferred.promise;
             } else {
-                return refreshToken(true);
+                return refreshToken(true, scope);
             }
         } else {
             var deferred = $q.defer();
@@ -196,24 +196,39 @@ accessTokenService.factory('AccessToken', ['Storage', '$rootScope', '$http', '$q
         }
     };
 
-    var refreshToken = function (connect) {
+    var refreshToken = function (connect, scope) {
         if (service.token && service.token.refresh_token) {
+
+            var data = (scope) ? {
+                grant_type: 'refresh_token',
+                refresh_token: service.token.refresh_token,
+                scope: scope.scope
+            } : {
+                grant_type: 'refresh_token',
+                refresh_token: service.token.refresh_token
+            };
+
+
+            var headers = {};
+
+            if (scope && scope.useHttpBasicAuth) {
+                var authHeader = btoa(scope.clientId + ':' + scope.secret);
+                headers['Authorization'] = 'Basic ' + authHeader;
+            }
+
+            headers['Content-Type'] = 'application/x-www-form-urlencoded';
+
             return $http({
                 method: "POST",
                 url: refreshTokenUri,
-                headers: {
-                    'Content-Type': 'application/x-www-form-urlencoded'
-                },
+                headers: headers,
                 transformRequest: function (obj) {
                     var str = [];
                     for (var p in obj)
                         str.push(encodeURIComponent(p) + "=" + encodeURIComponent(obj[p]));
                     return str.join("&");
                 },
-                data: {
-                    grant_type: "refresh_token",
-                    refresh_token: service.token.refresh_token
-                }
+                data: data
             }).then(function (result) {
                 angular.extend(service.token, result.data);
                 setExpiresAt();
@@ -286,12 +301,12 @@ accessTokenService.factory('AccessToken', ['Storage', '$rootScope', '$http', '$q
      * @param params
      * @returns {*|{}}
      */
-    var setToken = function (params) {
+    var setToken = function (params, scope) {
         service.token = service.token || {}; // init the token
         angular.extend(service.token, params); // set the access token params
         setTokenInSession(); // save the token into the session
         setExpiresAt();
-        setExpiresAtEvent(); // event to fire when the token expires
+        setExpiresAtEvent(scope); // event to fire when the token expires
 
         return service.token;
     };
@@ -349,7 +364,7 @@ accessTokenService.factory('AccessToken', ['Storage', '$rootScope', '$http', '$q
     /**
      * Set the interval at which the expired event is fired
      */
-    var setExpiresAtEvent = function () {
+    var setExpiresAtEvent = function (scope) {
         // Don't bother if there's no expires token
         if (typeof (service.token.expires_at) === 'undefined' || service.token.expires_at === null) {
             return;
@@ -359,7 +374,7 @@ accessTokenService.factory('AccessToken', ['Storage', '$rootScope', '$http', '$q
         if (time && time > 0 && time <= 2147483647) {
             if (service.token.refresh_token) {
                 expiresAtEvent = $interval(function () {
-                    refreshToken();
+                    refreshToken(false, scope);
                 }, time);
             } else {
                 expiresAtEvent = $timeout(function () {
