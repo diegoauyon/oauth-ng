@@ -202,7 +202,9 @@ accessTokenService.factory('AccessToken', ['Storage', '$rootScope', '$http', '$q
             var data = (scope) ? {
                 grant_type: 'refresh_token',
                 refresh_token: service.token.refresh_token,
-                scope: scope.scope
+                scope: scope.scope,
+                client_id: scope.clientId,
+                client_secret: scope.secret
             } : {
                 grant_type: 'refresh_token',
                 refresh_token: service.token.refresh_token
@@ -210,11 +212,6 @@ accessTokenService.factory('AccessToken', ['Storage', '$rootScope', '$http', '$q
 
 
             var headers = {};
-
-            if (scope && scope.useHttpBasicAuth) {
-                var authHeader = btoa(scope.clientId + ':' + scope.secret);
-                headers['Authorization'] = 'Basic ' + authHeader;
-            }
 
             headers['Content-Type'] = 'application/x-www-form-urlencoded';
 
