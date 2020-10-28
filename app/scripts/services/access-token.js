@@ -202,7 +202,6 @@ accessTokenService.factory('AccessToken', ['Storage', '$rootScope', '$http', '$q
             var data = (scope) ? {
                 grant_type: 'refresh_token',
                 refresh_token: service.token.refresh_token,
-                scope: scope.scope,
                 client_id: scope.clientId,
                 client_secret: scope.secret
             } : {
@@ -210,6 +209,14 @@ accessTokenService.factory('AccessToken', ['Storage', '$rootScope', '$http', '$q
                 refresh_token: service.token.refresh_token
             };
 
+            /**
+             * Scopes expected as array
+             */
+            var scopes = (scope.scope !== undefined) ? scope.scope.split(" ") : [];
+            for (let index = 0; index < scopes.length; index++) {
+              const scopeOption = scopes[index];
+              data[`scope[${index}]`] = scopeOption;
+            }
 
             var headers = {};
 

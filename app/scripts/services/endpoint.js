@@ -62,8 +62,8 @@ endpointClient.factory('Endpoint', ['$rootScope', 'AccessToken', '$q', '$http', 
     /*
      * Alias for 'redirect'
      */
-    service.login = function (redirectStrategy) {
-        service.redirect({},redirectStrategy);
+    service.login = function (loginOverrides, redirectStrategy) {
+        service.redirect(loginOverrides, redirectStrategy);
     };
 
     /*
