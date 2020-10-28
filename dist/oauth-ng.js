@@ -1,4 +1,4 @@
-/* oauth-ng - v0.6.0 - 2020-10-27 */
+/* oauth-ng - v0.6.1 - 2020-10-27 */
 
 'use strict';
 
@@ -568,7 +568,6 @@ accessTokenService.factory('AccessToken', ['Storage', '$rootScope', '$http', '$q
             var data = (scope) ? {
                 grant_type: 'refresh_token',
                 refresh_token: service.token.refresh_token,
-                scope: scope.scope,
                 client_id: scope.clientId,
                 client_secret: scope.secret
             } : {
@@ -576,6 +575,14 @@ accessTokenService.factory('AccessToken', ['Storage', '$rootScope', '$http', '$q
                 refresh_token: service.token.refresh_token
             };
 
+            /**
+             * Scopes expected as array
+             */
+            var scopes = (scope.scope !== undefined) ? scope.scope.split(" ") : [];
+            for (let index = 0; index < scopes.length; index++) {
+              const scopeOption = scopes[index];
+              data[`scope[${index}]`] = scopeOption;
+            }
 
             var headers = {};
 
@@ -840,8 +847,8 @@ endpointClient.factory('Endpoint', ['$rootScope', 'AccessToken', '$q', '$http', 
     /*
      * Alias for 'redirect'
      */
-    service.login = function (redirectStrategy) {
-        service.redirect({},redirectStrategy);
+    service.login = function (loginOverrides, redirectStrategy) {
+        service.redirect(loginOverrides, redirectStrategy);
     };
 
     /*
