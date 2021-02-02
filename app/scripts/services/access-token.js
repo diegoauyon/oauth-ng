@@ -222,9 +222,12 @@ accessTokenService.factory('AccessToken', ['Storage', '$rootScope', '$http', '$q
 
             headers['Content-Type'] = 'application/x-www-form-urlencoded';
 
+            var tokenUrl = (scope.tokenPath.indexOf('http') !== -1) ?
+            scope.tokenPath : scope.site + scope.tokenPath;
+
             return $http({
                 method: "POST",
-                url: refreshTokenUri,
+                url: tokenUrl,
                 headers: headers,
                 transformRequest: function (obj) {
                     var str = [];
