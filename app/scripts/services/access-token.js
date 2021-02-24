@@ -231,6 +231,7 @@ accessTokenService.factory('AccessToken', ['Storage', '$rootScope', '$http', '$q
                         cancelExpiresAtEvent();
                         Storage.delete('token');
                         $rootScope.$broadcast('oauth:expired');
+                        service.runExpired();
                     }
                 }
             });
@@ -329,6 +330,7 @@ accessTokenService.factory('AccessToken', ['Storage', '$rootScope', '$http', '$q
                         cancelExpiresAtEvent();
                         Storage.delete('token');
                         $rootScope.$broadcast('oauth:expired');
+                        service.runExpired();
                     }
                 }
             });
