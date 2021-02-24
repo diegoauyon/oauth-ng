@@ -9,7 +9,8 @@ accessTokenService.factory('AccessToken', ['Storage', '$rootScope', '$http', '$q
             typedLogin: "",
             typedPassword: "",
             scope: "",
-            runExpired: null
+            runExpired: null,
+            inProgress: false
         },
         hashFragmentKeys = [
             //Oauth2 keys per http://tools.ietf.org/html/rfc6749#section-4.2.2
@@ -168,6 +169,80 @@ accessTokenService.factory('AccessToken', ['Storage', '$rootScope', '$http', '$q
 
     service.forceRefresh = function (connect, scope) {
         return refreshToken(connect, scope);
+    };
+
+    service.safeRefresh = function (connect, scope) {
+        if (service.token && service.token.refresh_token && !service.inProgress) {
+            service.inProgress = true;
+            var data = (scope) ? {
+                grant_type: 'refresh_token',
+                refresh_token: service.token.refresh_token,
+                client_id: scope.clientId,
+                client_secret: scope.secret
+            } : {
+                grant_type: 'refresh_token',
+                refresh_token: service.token.refresh_token
+            };
+
+            /**
+             * Scopes expected as array
+             */
+            var scopes = (scope.scope !== undefined) ? scope.scope.split(" ") : [];
+            for (let index = 0; index < scopes.length; index++) {
+              const scopeOption = scopes[index];
+              data[`scope[${index}]`] = scopeOption;
+            }
+
+            var headers = {};
+
+            headers['Content-Type'] = 'application/x-www-form-urlencoded';
+
+            var tokenUrl = (scope.tokenPath.indexOf('http') !== -1) ?
+            scope.tokenPath : scope.site + scope.tokenPath;
+
+            return $http({
+                method: "POST",
+                url: tokenUrl,
+                headers: headers,
+                transformRequest: function (obj) {
+                    var str = [];
+                    for (var p in obj)
+                        str.push(encodeURIComponent(p) + "=" + encodeURIComponent(obj[p]));
+                    return str.join("&");
+                },
+                data: data
+            }).then(function (result) {
+                angular.extend(service.token, result.data);
+                setExpiresAt();
+                setTokenInSession();
+                if (connect) {
+                    $rootScope.$broadcast('oauth:login', service.token);
+                } else {
+                    $rootScope.$broadcast('oauth:refresh', service.token);
+                }
+                service.inProgress = false;
+                return result.data;
+            }, function (error) {
+                service.inProgress = false;
+                if (!!service.typedLogin && !!service.typedPassword) {
+                    return reconnect();
+                } else {
+                    if (error.status === 401 || error.status === 400) {
+                        cancelExpiresAtEvent();
+                        Storage.delete('token');
+                        $rootScope.$broadcast('oauth:expired');
+                    }
+                }
+            });
+        } else {
+            var deferred = $q.defer();
+            deferred.reject({
+                inProgress: service.inProgress,
+                token: service.token,
+                message: "No valid token or refresh already in progress..."
+            });
+            return deferred.promise;
+        }
     };
 
     /* * * * * * * * * *
@@ -380,7 +455,7 @@ accessTokenService.factory('AccessToken', ['Storage', '$rootScope', '$http', '$q
         if (time && time > 0 && time <= 2147483647) {
             if (service.token.refresh_token) {
                 expiresAtEvent = $interval(function () {
-                    refreshToken(false, scope);
+                    service.safeRefresh(false, scope);
                 }, time);
             } else {
                 expiresAtEvent = $timeout(function () {
